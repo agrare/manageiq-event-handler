@@ -29,8 +29,8 @@ def main(args)
     ) do |messages|
       messages.each do |msg|
         event = msg.payload
-        puts "Received Event (#{msg.message}): #{events[:event_type]} #{events[:chain_id]}"
-        EmsEvent.add(events[:ems_id], events)
+        puts "Received Event (#{msg.message}): #{event[:event_type]} #{event[:chain_id]}"
+        EmsEvent.add(event[:ems_id], event)
         client.ack(msg.ack_ref)
       end
     end
