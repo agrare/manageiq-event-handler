@@ -19,23 +19,20 @@ def main(args)
     :port       => args[:q_port],
     :username   => args[:q_user],
     :password   => args[:q_password],
-    :client_ref => "event_handler",
+    :client_ref => args[:q_client_ref],
   ) do |client|
     puts "Listening for events..."
 
-    client.subscribe_messages(
+    client.subscribe_topic(
       :service => "events",
-      :limit   => 10
-    ) do |messages|
-      messages.each do |msg|
-        event = msg.payload
-        puts "Received Event (#{msg.message}): #{event[:event_type]} #{event[:chain_id]}"
-        EmsEvent.add(event[:ems_id], event)
-        client.ack(msg.ack_ref)
-      end
+      :persist_ref => args[:q_persist_ref],
+    ) do |sender, event, payload|
+      puts "Received Event (#{event}) by sender #{sender}: #{payload[:event_type]} #{payload[:chain_id]}"
+      EmsEvent.add(sender.to_i, payload) unless args[:no_persist]
     end
 
-    loop { sleep 5 }
+    # never exit - the above block is stored as a callback and is executed by another thread
+    loop { sleep 10 }
   end
 end
 
@@ -45,6 +42,9 @@ def parse_args
     opt :q_port,     "queue port",     :type => :integer
     opt :q_user,     "queue username", :type => :string
     opt :q_password, "queue password", :type => :string
+    opt :q_persist_ref, "topic persist_ref",   :type => :string
+    opt :q_client_ref,  "topic client_ref",    :type => :string
+    opt :no_persist,    "dont persist events", :type => :flag
     opt :debug,      "debug", :type => :flag
   end
 
@@ -52,6 +52,8 @@ def parse_args
   args[:q_port]       ||= ENV["QUEUE_PORT"]     || "61616"
   args[:q_user]       ||= ENV["QUEUE_USER"]     || "admin"
   args[:q_password]   ||= ENV["QUEUE_PASSWORD"] || "smartvm"
+  args[:q_client_ref]   ||= ENV["QUEUE_CLIENT_REF"]  || "event_handler"
+  args[:q_persist_ref]  ||= ENV["QUEUE_PERSIST_REF"] || "event_handler"
 
   args[:q_port] = args[:q_port].to_i
 
